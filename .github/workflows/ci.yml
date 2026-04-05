@@ -1,0 +1,43 @@
+name: CI/CD to Docker Hub
+
+# main 브랜치로 코드가 Push 될 때마다 작동합니다.
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. GitHub 저장소의 코드를 러너(Runner)에 가져옵니다.
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Docker Hub 로그인 (주의: Secrets 필요)
+      # GitHub Repository -> Settings -> Secrets and variables -> Actions 에 
+      # DOCKERHUB_USERNAME 과 DOCKERHUB_TOKEN 을 설정해야 합니다.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 3. Docker 이미지 빌드를 위한 기본 설정
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 4. 이미지 빌드 및 Docker Hub에 Push
+      # tags: [자신의 DOCKER ID]/[이미지 이름]:latest
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # docker/login-action 시 제공된 사용자명과, 앱 식별자로 태그(tag)를 지정
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mlops-yolo-api:latest
+          # 빌드 시간 단축을 위한 캐시 처리
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/mlops-yolo-api:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/mlops-yolo-api:buildcache,mode=max
