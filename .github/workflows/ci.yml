@@ -41,3 +41,24 @@ jobs:
           # 빌드 시간 단축을 위한 캐시 처리
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/mlops-yolo-api:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/mlops-yolo-api:buildcache,mode=max
+
+  deploy-to-local:
+    name: Deploy to Local Server
+    # 빌드가 성공적으로 끝난 뒤에 이 작업이 실행되도록 설정
+    needs: build-and-push 
+    # GitHub 서버가 아닌, 내 컴퓨터(Self-hosted)에서 실행하도록 지정
+    runs-on: self-hosted
+
+    steps:
+      - name: Stop existing container
+        # 실패해도 중단없이 넘어가도록(|| true) 설정
+        run: |
+          docker stop mlops-yolo-api || true
+          docker rm mlops-yolo-api || true
+
+      - name: Pull latest image from Docker Hub
+        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/mlops-yolo-api:latest
+
+      - name: Run new container in background
+        # -d 옵션을 추가하여 백그라운드에서 실행되도록 합니다.
+        run: docker run -d -p 8000:8000 --name mlops-yolo-api ${{ secrets.DOCKERHUB_USERNAME }}/mlops-yolo-api:latest
